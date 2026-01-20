@@ -1,63 +1,72 @@
--- PostgreSQL Schema
+# Week 2: Calculate Flight Duration (Function)
+Goal: Create a SQL function that calculates the duration of a flight.
 
-CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+# Task: Write a PL/pgSQL function called get_flight_duration that accepts a flight ID and returns the flight's duration as an INTERVAL.
 
-CREATE TABLE IF NOT EXISTS posts (
-    id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL,
-    title VARCHAR(255) NOT NULL,
-    body TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
+# Activity 1
+```sql
+CREATE OR REPLACE FUNCTION get_flight_duration(p_flight_id INT)
+RETURNS INTERVAL AS $$
+DECLARE
+    v_departure TIMESTAMP;
+    v_arrival TIMESTAMP;
+BEGIN
+    SELECT departure_time, arrival_time
+    INTO v_departure, v_arrival
+    FROM flights
+    WHERE flight_id = p_flight_id;
+    RETURN v_arrival - v_departure;
+END;
+$$ LANGUAGE plpgsql;
+```
 
-CREATE TABLE IF NOT EXISTS comments (
-    id SERIAL PRIMARY KEY,
-    post_id INT NOT NULL,
-    user_id INT NOT NULL,
-    comment TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (post_id) REFERENCES posts(id),
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
+# Activity 2
+```sql
+CREATE OR REPLACE FUNCTION get_price_category(p_flight_id INT)
+RETURNS VARCHAR AS $$
+DECLARE
+    v_price NUMERIC;
+BEGIN
+    SELECT base_price INTO v_price
+    FROM flights
+    WHERE flight_id = p_flight_id;
+    IF v_price < 100 THEN
+        RETURN 'Budget';
+    ELSIF v_price >= 100 AND v_price < 300 THEN
+        RETURN 'Standard';
+    ELSE
+        RETURN 'Premium';
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+```
 
--- -- Data for the tables
--- INSERT INTO users (username) VALUES ('alice'), ('bob');
+# Activity 3
+```sql
+CREATE OR REPLACE PROCEDURE book_flight(
+    p_passenger_id INT,
+    p_flight_id INT,
+    p_seat_number VARCHAR
+)
+AS $$
+BEGIN
+    INSERT INTO bookings (passenger_id, flight_id, seat_number, status, booking_date)
+    VALUES (p_passenger_id, p_flight_id, p_seat_number, 'Confirmed', CURRENT_DATE);
+END;
+$$ LANGUAGE plpgsql;
+```
 
--- INSERT INTO posts (user_id, title, body) VALUES
--- (1, 'First Post!', 'This is the body of the first post.'),
--- (2, 'Bob''s Thoughts', 'A penny for my thoughts.');
-
--- INSERT INTO comments (post_id, user_id, comment) VALUES
--- (1, 2, 'Great first post, Alice!'),
--- (2, 1, 'Interesting thoughts, Bob.');
-
--- Data for users table
-INSERT INTO users (username) VALUES
-('charlie'),
-('bag-oyen'),
-('navor'),
-('fiona'),
-('george');
-
-
--- Data for posts table
-INSERT INTO posts (user_id, title, body) VALUES
-(4, 'Hello World', 'This is Charlie''s first blog post.'),
-(5, 'Daily Life', 'Sharing some daily experiences.'),
-(6, 'Tech Talk', 'Let''s talk about technology today.'),
-(7, 'Food Blog', 'I love cooking and eating food.'),
-(8, 'Random Ideas', 'Just some random thoughts.');
-
-
--- Data for comments table
-INSERT INTO comments (post_id, user_id, comment) VALUES
-(3, 4, 'Nice introduction!'),
-(4, 5, 'Very relatable post.'),
-(5, 6, 'I agree with your points.'),
-(6, 7, 'Now I am hungry 😂'),
-(7, 3, 'Keep posting more content!');
+# Activity 4
+```sql
+CREATE OR REPLACE PROCEDURE increase_prices_for_airline(
+    p_airline_id INT,
+    p_percentage_increase NUMERIC
+)
+AS $$
+BEGIN
+    UPDATE flights
+    SET base_price = base_price * (1 + p_percentage_increase / 100)
+    WHERE airline_id = p_airline_id;
+END;
+$$ LANGUAGE plpgsql;
+```
